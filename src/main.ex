@@ -1,93 +1,112 @@
-# Don't use unix commands
-# Go to directory passed as absolute path
-# then count each file that has .go as golang
-# and how many lines it has as added to total
 defmodule Liner do
+  @spec run(bitstring) :: map
   def run(path) do
-    # Return programming language + how many lines of code
     getFiles(path)
   end
 
+  @spec getFiles(bitstring) :: map
   defp getFiles(path) do
     if File.exists?(path) && File.dir?(path) do
-      Path.wildcard("#{Path.expand(path)}/*") |> Enum.map(&getFiles/1)
+      Path.wildcard("#{Path.expand(path)}/*")
+      |> Enum.map(&getFiles/1)
+      |> Enum.reduce(%{}, fn result, acc -> Map.merge(acc, result) end)
     else
-      IO.puts(path)
+      languages = File.stream!("data/languages.txt") |> Enum.map(&String.trim/1) |> Enum.to_list()
 
-      addLanguage(path, [])
+      addLanguage(path, languages, %{})
     end
   end
 
-  def addLanguage(file, languages) do
-    if !File.exists?(file) || File.dir?(file) do
-      IO.puts("File doesn't exist or is a directory.")
-      false
+  @spec addLanguage(bitstring, list, map) :: map
+  def addLanguage(filePath, languages, linesPerLanguage) do
+    if !File.exists?(filePath) || File.dir?(filePath) do
+      # IO.puts("File doesn't exist or is a directory.")
+      %{}
     else
-      if !String.contains?(file, ".") do
-        IO.puts("File name is invalid.")
-        false
+      if !String.contains?(filePath, ".") do
+        # IO.puts("File name is invalid.")
+        %{}
       else
-        IO.puts("Parsing #{file}")
-        [fileExtension | _] = Enum.reverse(String.split(file, "."))
+        # IO.puts("Parsing #{filePath}")
+        [fileExtension | _] = Enum.reverse(String.split(filePath, "."))
 
-        if Enum.member?(languages, fileExtension) && !Enum.empty?(languages) do
-          IO.puts("Already in the list #{fileExtension}.")
-          languages
+        if Enum.member?(languages, fileExtension) do
+          # IO.puts("Known language in the list .#{fileExtension}.")
+          linesOfCode = countLinesOfCode(filePath)
+
+          newLinesPerLanguage =
+            Map.update(linesPerLanguage, :"#{fileExtension}", linesOfCode, fn x ->
+              x + linesOfCode
+            end)
+
+          newLinesPerLanguage
         else
-          IO.puts("Adding to list #{fileExtension}.")
-          [fileExtension | languages]
+          # IO.puts("Returning empty")
+          %{}
         end
       end
     end
   end
 
-  # defp countLinesOfCode(file) do
-  #   1
-  # end
-  #
-  # defp addLinesOfCodeToTotal(linesCount) do
-  #   1
-  # end
+  @spec countLinesOfCode(bitstring) :: integer
+  defp countLinesOfCode(filePath) do
+    File.stream!(filePath)
+    |> Enum.count()
+  end
 end
 
 Liner.run("../")
 
 IO.puts(
-  Liner.addLanguage(Path.expand("./src/main.ex"), [
-    "go"
-  ]) == ["ex", "go"]
-)
-
-IO.puts(
   Liner.addLanguage(
-    Path.expand("./src/main.sex"),
-    ["go"]
-  ) == false
+    Path.expand("./src/main.ex"),
+    [
+      "go"
+    ],
+    %{}
+  ) == %{}
 )
 
 IO.puts(
   Liner.addLanguage(
     "/Path/That/Doesnt/Exist",
-    []
-  ) == false
+    [],
+    %{}
+  ) == %{}
+)
+
+IO.puts(
+  Liner.addLanguage(
+    "/Path/That/Doesnt/Exist.x86",
+    ["x86"],
+    %{}
+  ) == %{}
 )
 
 IO.puts(
   Liner.addLanguage(
     Path.expand("./src/main_ex"),
-    []
-  ) == false
+    [],
+    %{}
+  ) == %{}
 )
 
 IO.puts(
   Liner.addLanguage(
     Path.expand("./src/main.ex"),
-    []
-  ) == ["ex"]
+    [],
+    %{}
+  ) == %{}
 )
 
 IO.puts(
-  Liner.addLanguage(Path.expand("./src/main.ex"), [
-    "ex"
-  ]) == ["ex"]
+  Liner.addLanguage(
+    Path.expand("./data/languages.txt"),
+    [
+      "txt"
+    ],
+    %{}
+  ) == %{txt: 7}
 )
+
+IO.puts(Liner.run("./test_files") == %{c: 1, exs: 2, nasm: 4, py: 3})
