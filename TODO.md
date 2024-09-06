@@ -10,11 +10,3 @@
             while passing it as argument
         - [x] If file is valid programming language
         count how many lines
-- [ ] Cache results
-- [ ] Hash directories
-- [ ] On hash change, recalculate lines of code
-
-
-
-
-- [ ] Write tests using ExUnit
